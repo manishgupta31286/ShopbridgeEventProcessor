@@ -13,30 +13,46 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using ShopbridgeEventProcessor.Models;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
+using Npgsql;
 
 namespace ShopbridgeEventProcessor
 {
     public class Program
     {
+        public static IHostBuilder CreateHostBuilder(string[] args) =>
+                Host.CreateDefaultBuilder(args)
+                    .ConfigureServices((hostContext, services) => { });
+
         static void Main(string[] args)
         {
-            var configuration = new ConfigurationBuilder()
-            .SetBasePath(Directory.GetParent(AppContext.BaseDirectory).FullName)
-            .AddJsonFile("appsettings.json", false)
-            .Build();
+            var builder = CreateHostBuilder(args).Build();
 
-            var conString = configuration.GetConnectionString("Shopbridge_Context");
+            var configuration = new ConfigurationBuilder()
+                .SetBasePath(Directory.GetParent(AppContext.BaseDirectory).FullName)
+                .AddJsonFile("appsettings.json", false)
+                .AddEnvironmentVariables()
+                .Build();            
+
+            NpgsqlConnectionStringBuilder connBuilder = new NpgsqlConnectionStringBuilder();
+            connBuilder.Host = Environment.GetEnvironmentVariable("DB_HOST");
+            connBuilder.Database= Environment.GetEnvironmentVariable("DATABASE");
+            connBuilder.Username = Environment.GetEnvironmentVariable("USERNAME");            
+            connBuilder.Password = Environment.GetEnvironmentVariable("PASSWORD");
+            connBuilder.Port = Convert.ToInt32(Environment.GetEnvironmentVariable("PORT"));
+            connBuilder.Pooling = true;
+                             
+            Console.WriteLine(connBuilder.ConnectionString);
+
             var sc = new ServiceCollection()
             .AddDbContext<ShopbridgeContext>(options =>
-                    options.UseSqlServer(conString));
+                    options.UseNpgsql(connBuilder.ConnectionString));
 
             var serviceProvider = sc.BuildServiceProvider();
             var dbContext = serviceProvider.GetService<ShopbridgeContext>();
             var repo = new Repository(dbContext);
-
-            var amqpSection = configuration.GetSection("amqp");
-
-            var factory = new ConnectionFactory() { HostName = amqpSection.GetSection("hostname").Value };
+        
+            var factory = new ConnectionFactory() { HostName = Environment.GetEnvironmentVariable("RABBITMQ_HOST") };
 
             using (var connection = factory.CreateConnection())
             using (var channel = connection.CreateModel())
@@ -59,9 +75,10 @@ namespace ShopbridgeEventProcessor
                 };
                 channel.BasicConsume(queue: "shopbridgequeue", autoAck: true, consumer: consumer);
 
+                builder.Run();
                 Console.WriteLine(" Press [enter] to exit.");
                 Console.ReadLine();
-            }
+            }            
         }
     }
 }

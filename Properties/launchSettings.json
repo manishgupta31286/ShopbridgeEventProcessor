@@ -1,0 +1,15 @@
+{
+  "profiles": {
+    "ShopbridgeEventProcessor": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "DB_HOST": "localhost",
+        "DATABASE": "ShopbridgeDb",
+        "USERNAME": "cmddbuser",
+        "PASSWORD": "pa55w0rd!",
+        "PORT": "5432",
+        "RABBITMQ_HOST": "localhost"
+      }
+    }
+  }
+}

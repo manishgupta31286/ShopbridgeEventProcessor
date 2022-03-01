@@ -4,7 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using ShopbridgeEventProcessor.Models;
-
+using Npgsql.EntityFrameworkCore.PostgreSQL;
 
 namespace ShopbridgeEventProcessor
 {
@@ -17,6 +17,8 @@ namespace ShopbridgeEventProcessor
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
+            base.OnModelCreating(builder);
+            builder.HasPostgresExtension("uuid-ossp");
             builder.Entity<Product>()
                 .HasIndex(p => p.ProductUpc)
                 .IsUnique();
